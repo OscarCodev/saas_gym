@@ -2,8 +2,18 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 
+class MembershipPlanInfo(BaseModel):
+    id: int
+    name: str
+    price: float
+    duration_days: int
+    
+    class Config:
+        from_attributes = True
+
 class MemberBase(BaseModel):
     full_name: str
+    dni: str
     email: EmailStr
     phone: str
     membership_type: Optional[str] = None  # Legacy field, optional now
@@ -15,6 +25,7 @@ class MemberCreate(MemberBase):
 
 class MemberUpdate(BaseModel):
     full_name: Optional[str] = None
+    dni: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     membership_type: Optional[str] = None
@@ -25,6 +36,7 @@ class MemberResponse(MemberBase):
     id: int
     gym_id: int
     plan_id: Optional[int] = None
+    membership_plan: Optional[MembershipPlanInfo] = None
     membership_status: str
     end_date: datetime
     created_at: datetime

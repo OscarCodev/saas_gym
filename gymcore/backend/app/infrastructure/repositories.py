@@ -1,6 +1,6 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
-from app.infrastructure.database import GymModel, UserModel, MemberModel, SubscriptionModel, MembershipPlanModel
+from app.infrastructure.database import GymModel, UserModel, MemberModel, SubscriptionModel, MembershipPlanModel, AttendanceModel
 from app.domain.entities import Gym, User, Member, Subscription, MembershipPlan
 from app.core.security import verify_password, get_password_hash
 
@@ -72,7 +72,7 @@ class UserRepository:
         return db_user
 
     def get_by_email(self, email: str) -> Optional[UserModel]:
-        return self.db.query(UserModel).filter(UserModel.email == email).first()
+        return self.db.query(UserModel).options(joinedload(UserModel.gym)).filter(UserModel.email == email).first()
 
     def get_by_gym_id(self, gym_id: int) -> List[UserModel]:
         return self.db.query(UserModel).filter(UserModel.gym_id == gym_id).all()
@@ -223,3 +223,71 @@ class MembershipPlanRepository:
             self.db.commit()
             self.db.refresh(plan)
         return plan
+
+class AttendanceRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def check_in(self, member_id: int, gym_id: int) -> AttendanceModel:
+        attendance = AttendanceModel(
+            member_id=member_id,
+            gym_id=gym_id
+        )
+        self.db.add(attendance)
+        self.db.commit()
+        self.db.refresh(attendance)
+        return attendance
+
+    def get_by_member(self, member_id: int, limit: int = 10) -> List[AttendanceModel]:
+        from sqlalchemy.orm import joinedload
+        return self.db.query(AttendanceModel).options(
+            joinedload(AttendanceModel.member)
+        ).filter(
+            AttendanceModel.member_id == member_id
+        ).order_by(AttendanceModel.check_in_time.desc()).limit(limit).all()
+
+    def get_today_by_gym(self, gym_id: int) -> List[AttendanceModel]:
+        from datetime import datetime, time
+        from sqlalchemy.orm import joinedload
+        
+        now = datetime.now()
+        today_start = datetime.combine(now.date(), time.min)
+        today_end = datetime.combine(now.date(), time.max)
+        
+        return self.db.query(AttendanceModel).options(
+            joinedload(AttendanceModel.member)
+        ).filter(
+            AttendanceModel.gym_id == gym_id,
+            AttendanceModel.check_in_time >= today_start,
+            AttendanceModel.check_in_time <= today_end
+        ).order_by(AttendanceModel.check_in_time.desc()).all()
+
+    def get_stats(self, gym_id: int) -> dict:
+        from datetime import datetime, timedelta
+        from sqlalchemy import func
+        
+        now = datetime.now()
+        today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+        week_start = now - timedelta(days=7)
+        month_start = now - timedelta(days=30)
+        
+        today_count = self.db.query(func.count(AttendanceModel.id)).filter(
+            AttendanceModel.gym_id == gym_id,
+            AttendanceModel.check_in_time >= today_start
+        ).scalar()
+        
+        week_count = self.db.query(func.count(AttendanceModel.id)).filter(
+            AttendanceModel.gym_id == gym_id,
+            AttendanceModel.check_in_time >= week_start
+        ).scalar()
+        
+        month_count = self.db.query(func.count(AttendanceModel.id)).filter(
+            AttendanceModel.gym_id == gym_id,
+            AttendanceModel.check_in_time >= month_start
+        ).scalar()
+        
+        return {
+            "today_count": today_count or 0,
+            "week_count": week_count or 0,
+            "month_count": month_count or 0
+        }

@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, extract
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
-from app.infrastructure.database import get_db, MemberModel, UserModel
+from app.infrastructure.database import get_db, MemberModel, UserModel, MembershipPlanModel
 from app.api.dependencies import get_current_user, verify_active_gym
 from app.api.schemas.members import MemberResponse
 
@@ -36,22 +37,27 @@ def get_dashboard_stats(
         MemberModel.created_at >= start_of_month
     ).count()
     
-    # Membership distribution
+    # Membership distribution by plan names
     distribution = db.query(
-        MemberModel.membership_type, 
+        MembershipPlanModel.name, 
         func.count(MemberModel.id)
+    ).join(
+        MemberModel, MemberModel.plan_id == MembershipPlanModel.id
     ).filter(
         MemberModel.gym_id == gym_id
-    ).group_by(MemberModel.membership_type).all()
+    ).group_by(MembershipPlanModel.name).all()
     
-    membership_distribution = {type_: count for type_, count in distribution}
+    membership_distribution = {name: count for name, count in distribution}
     
-    # Mock revenue calculation
+    # Calculate revenue based on actual plans
     revenue = 0
-    for type_, count in membership_distribution.items():
-        if type_ == 'basic': revenue += count * 29
-        elif type_ == 'pro': revenue += count * 49
-        elif type_ == 'elite': revenue += count * 99
+    for name, count in distribution:
+        plan = db.query(MembershipPlanModel).filter(
+            MembershipPlanModel.name == name,
+            MembershipPlanModel.gym_id == gym_id
+        ).first()
+        if plan:
+            revenue += count * plan.price
         
     return {
         "total_members": total_members,
@@ -80,16 +86,59 @@ def get_revenue_chart(
     current_user: UserModel = Depends(get_current_user),
     active: bool = Depends(verify_active_gym)
 ):
-    # Mock data for the last 6 months
-    months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"]
-    data = []
-    
-    # Base revenue
-    base = 1000
-    
-    for i, month in enumerate(months):
-        # Add some randomness/growth
-        revenue = base + (i * 150) + (50 if i % 2 == 0 else -50)
-        data.append({"month": month, "revenue": revenue})
+    try:
+        gym_id = current_user.gym_id
         
-    return data
+        # Get last 6 months
+        now = datetime.now()
+        six_months_ago = now - relativedelta(months=5)
+        
+        # Spanish month names
+        month_names = {
+            1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+            7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
+        }
+        
+        # Initialize data for last 6 months
+        data = []
+        for i in range(6):
+            month_date = six_months_ago + relativedelta(months=i)
+            month_num = month_date.month
+            year = month_date.year
+            
+            # Query members who started in this month with their plans
+            members_in_month = db.query(MemberModel).join(
+                MembershipPlanModel,
+                MemberModel.plan_id == MembershipPlanModel.id,
+                isouter=True
+            ).filter(
+                MemberModel.gym_id == gym_id,
+                extract('year', MemberModel.start_date) == year,
+                extract('month', MemberModel.start_date) == month_num
+            ).all()
+            
+            # Calculate revenue for this month
+            revenue = 0
+            for member in members_in_month:
+                if member.membership_plan:
+                    revenue += member.membership_plan.price
+                elif member.membership_type:
+                    # Fallback to legacy prices
+                    if member.membership_type == 'basic':
+                        revenue += 99
+                    elif member.membership_type == 'pro':
+                        revenue += 269
+                    elif member.membership_type == 'elite':
+                        revenue += 499
+            
+            data.append({
+                "month": month_names[month_num],
+                "revenue": round(revenue, 2)
+            })
+        
+        return data
+    except Exception as e:
+        print(f"Error in revenue-chart: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating revenue chart: {str(e)}")

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime, timedelta
 
@@ -19,7 +19,7 @@ def get_members(
     current_user: UserModel = Depends(get_current_user),
     active: bool = Depends(verify_active_gym)
 ):
-    query = db.query(MemberModel).filter(MemberModel.gym_id == current_user.gym_id)
+    query = db.query(MemberModel).options(joinedload(MemberModel.membership_plan)).filter(MemberModel.gym_id == current_user.gym_id)
     
     if status and status != 'all':
         query = query.filter(MemberModel.membership_status == status)
@@ -61,10 +61,16 @@ def create_member(
         
     end_date = member.start_date + timedelta(days=duration_days)
     
+    # Verificar que el DNI no esté duplicado
+    existing_dni = db.query(MemberModel).filter(MemberModel.dni == member.dni).first()
+    if existing_dni:
+        raise HTTPException(status_code=400, detail="Ya existe un socio con ese DNI")
+    
     db_member = MemberModel(
         gym_id=current_user.gym_id,
         plan_id=member.plan_id,
         full_name=member.full_name,
+        dni=member.dni,
         email=member.email,
         phone=member.phone,
         membership_type=member.membership_type,

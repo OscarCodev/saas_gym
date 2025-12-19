@@ -31,9 +31,9 @@ def mock_payment(
     use_case = ProcessPaymentUseCase(db)
     # Assuming amount is fixed based on plan_type for now, or passed in request. 
     # The prompt schema for PaymentRequest only has plan_type and payment_method_mock.
-    # Let's assign dummy amounts.
-    amounts = {"basic": 29.99, "pro": 59.99, "elite": 99.99}
-    amount = amounts.get(request.plan_type, 29.99)
+    # Let's assign dummy amounts in soles (PEN).
+    amounts = {"basic": 99.00, "pro": 269.00, "elite": 499.00}
+    amount = amounts.get(request.plan_type, 99.00)
     
     subscription = use_case.execute(current_user.gym_id, amount, request.plan_type)
     

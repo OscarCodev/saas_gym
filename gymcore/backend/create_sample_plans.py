@@ -20,35 +20,35 @@ def create_sample_plans(access_token):
         {
             "name": "Plan Básico",
             "description": "Acceso básico al gimnasio",
-            "price": 29.99,
+            "price": 99.00,
             "duration_days": 30,
             "benefits": "Acceso sala de pesas\nHorario limitado 9am-5pm\n1 clase grupal por semana"
         },
         {
             "name": "Plan Premium",
             "description": "Acceso completo con beneficios extra",
-            "price": 49.99,
+            "price": 169.00,
             "duration_days": 30,
             "benefits": "Acceso ilimitado\nTodas las clases grupales\nToalla incluida\nDescuento en tienda"
         },
         {
             "name": "Plan Elite",
             "description": "Membresía premium con entrenamiento personalizado",
-            "price": 99.99,
+            "price": 339.00,
             "duration_days": 30,
             "benefits": "Todo lo de Premium\n2 sesiones PT al mes\nPlan nutricional\nAcceso área VIP"
         },
         {
             "name": "Plan Estudiante",
             "description": "Descuento especial para estudiantes",
-            "price": 24.99,
+            "price": 79.00,
             "duration_days": 30,
             "benefits": "Acceso sala de pesas\nHorario 7am-10pm\n50% descuento clases"
         },
         {
             "name": "Plan Trimestral",
             "description": "Ahorra con plan de 3 meses",
-            "price": 79.99,
+            "price": 269.00,
             "duration_days": 90,
             "benefits": "Acceso completo 3 meses\nClases ilimitadas\nEvaluación física gratis"
         }
@@ -68,7 +68,7 @@ def create_sample_plans(access_token):
             if response.status_code == 201:
                 plan = response.json()
                 created_plans.append(plan)
-                print(f"✅ Plan creado: {plan['name']} - ${plan['price']}")
+                print(f"✅ Plan creado: {plan['name']} - S/{plan['price']}")
             else:
                 print(f"❌ Error creando {plan_data['name']}: {response.text}")
         except Exception as e:

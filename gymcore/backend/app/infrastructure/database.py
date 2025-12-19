@@ -72,6 +72,7 @@ class MemberModel(Base):
     gym_id = Column(Integer, ForeignKey("gyms.id"))
     plan_id = Column(Integer, ForeignKey("membership_plans.id"), nullable=True)
     full_name = Column(String)
+    dni = Column(String, index=True, unique=True)
     email = Column(String, index=True)
     phone = Column(String)
     membership_type = Column(String, nullable=True)  # Legacy field, keep for compatibility
@@ -83,6 +84,7 @@ class MemberModel(Base):
 
     gym = relationship("GymModel", back_populates="members")
     membership_plan = relationship("MembershipPlanModel", back_populates="members")
+    attendances = relationship("AttendanceModel", back_populates="member")
 
 class SubscriptionModel(Base):
     __tablename__ = "subscriptions"
@@ -118,6 +120,18 @@ class PasswordResetTokenModel(Base):
     expires_at = Column(DateTime)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class AttendanceModel(Base):
+    __tablename__ = "attendances"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    member_id = Column(Integer, ForeignKey("members.id"))
+    gym_id = Column(Integer, ForeignKey("gyms.id"))
+    check_in_time = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=datetime.now)
+    
+    member = relationship("MemberModel", back_populates="attendances")
+    gym = relationship("GymModel")
 
 class NotificationModel(Base):
     __tablename__ = "notifications"

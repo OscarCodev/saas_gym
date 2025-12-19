@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.routes import auth, billing, members, dashboard, users, gyms, notifications, membership_plans
+from app.api.routes import auth, billing, members, dashboard, users, gyms, notifications, membership_plans, attendance, admin
 
 router = APIRouter()
 
@@ -11,3 +11,5 @@ router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 router.include_router(users.router, prefix="/users", tags=["users"])
 router.include_router(gyms.router, prefix="/gyms", tags=["gyms"])
 router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+router.include_router(attendance.router, prefix="/attendance", tags=["attendance"])
+router.include_router(admin.router, prefix="/admin", tags=["admin"])
