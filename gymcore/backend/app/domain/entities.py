@@ -45,6 +45,21 @@ class Member(BaseModel):
     class Config:
         from_attributes = True
 
+class MembershipPlan(BaseModel):
+    id: Optional[int] = None
+    gym_id: int
+    name: str
+    description: Optional[str] = None
+    price: float
+    duration_days: int
+    benefits: Optional[str] = None  # JSON string with benefits list
+    is_active: bool = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
 class Subscription(BaseModel):
     id: Optional[int] = None
     gym_id: int

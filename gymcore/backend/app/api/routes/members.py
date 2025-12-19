@@ -38,17 +38,32 @@ def create_member(
     current_user: UserModel = Depends(get_current_user),
     active: bool = Depends(verify_active_gym)
 ):
-    # Calculate end_date based on membership_type
+    from app.infrastructure.database import MembershipPlanModel
+    
+    # Calculate end_date based on plan_id or membership_type
     duration_days = 30  # Default
-    if member.membership_type == 'pro':
-        duration_days = 30
-    elif member.membership_type == 'elite':
-        duration_days = 30
+    
+    if member.plan_id:
+        # Use custom plan
+        plan = db.query(MembershipPlanModel).filter(
+            MembershipPlanModel.id == member.plan_id,
+            MembershipPlanModel.gym_id == current_user.gym_id
+        ).first()
+        if not plan:
+            raise HTTPException(status_code=404, detail="Membership plan not found")
+        duration_days = plan.duration_days
+    elif member.membership_type:
+        # Legacy: use membership_type
+        if member.membership_type == 'pro':
+            duration_days = 30
+        elif member.membership_type == 'elite':
+            duration_days = 30
         
     end_date = member.start_date + timedelta(days=duration_days)
     
     db_member = MemberModel(
         gym_id=current_user.gym_id,
+        plan_id=member.plan_id,
         full_name=member.full_name,
         email=member.email,
         phone=member.phone,

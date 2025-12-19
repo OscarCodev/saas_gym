@@ -31,6 +31,7 @@ class GymModel(Base):
 
     users = relationship("UserModel", back_populates="gym")
     members = relationship("MemberModel", back_populates="gym")
+    membership_plans = relationship("MembershipPlanModel", back_populates="gym")
     subscriptions = relationship("SubscriptionModel", back_populates="gym")
 
 class UserModel(Base):
@@ -47,15 +48,33 @@ class UserModel(Base):
 
     gym = relationship("GymModel", back_populates="users")
 
+class MembershipPlanModel(Base):
+    __tablename__ = "membership_plans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    gym_id = Column(Integer, ForeignKey("gyms.id"))
+    name = Column(String, index=True)
+    description = Column(Text, nullable=True)
+    price = Column(Float)
+    duration_days = Column(Integer)
+    benefits = Column(Text, nullable=True)  # JSON string
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    gym = relationship("GymModel", back_populates="membership_plans")
+    members = relationship("MemberModel", back_populates="membership_plan")
+
 class MemberModel(Base):
     __tablename__ = "members"
 
     id = Column(Integer, primary_key=True, index=True)
     gym_id = Column(Integer, ForeignKey("gyms.id"))
+    plan_id = Column(Integer, ForeignKey("membership_plans.id"), nullable=True)
     full_name = Column(String)
     email = Column(String, index=True)
     phone = Column(String)
-    membership_type = Column(String)
+    membership_type = Column(String, nullable=True)  # Legacy field, keep for compatibility
     membership_status = Column(String)
     start_date = Column(DateTime)
     end_date = Column(DateTime)
@@ -63,6 +82,7 @@ class MemberModel(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     gym = relationship("GymModel", back_populates="members")
+    membership_plan = relationship("MembershipPlanModel", back_populates="members")
 
 class SubscriptionModel(Base):
     __tablename__ = "subscriptions"

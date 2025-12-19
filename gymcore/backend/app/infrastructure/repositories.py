@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from app.infrastructure.database import GymModel, UserModel, MemberModel, SubscriptionModel
-from app.domain.entities import Gym, User, Member, Subscription
+from app.infrastructure.database import GymModel, UserModel, MemberModel, SubscriptionModel, MembershipPlanModel
+from app.domain.entities import Gym, User, Member, Subscription, MembershipPlan
 from app.core.security import verify_password, get_password_hash
 
 class GymRepository:
@@ -167,3 +167,59 @@ class SubscriptionRepository:
         return self.db.query(SubscriptionModel).filter(
             SubscriptionModel.gym_id == gym_id
         ).order_by(SubscriptionModel.start_date.desc()).all()
+
+class MembershipPlanRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create(self, plan: MembershipPlan) -> MembershipPlanModel:
+        db_plan = MembershipPlanModel(
+            gym_id=plan.gym_id,
+            name=plan.name,
+            description=plan.description,
+            price=plan.price,
+            duration_days=plan.duration_days,
+            benefits=plan.benefits,
+            is_active=plan.is_active
+        )
+        self.db.add(db_plan)
+        self.db.commit()
+        self.db.refresh(db_plan)
+        return db_plan
+
+    def get_by_id(self, plan_id: int, gym_id: int) -> Optional[MembershipPlanModel]:
+        return self.db.query(MembershipPlanModel).filter(
+            MembershipPlanModel.id == plan_id,
+            MembershipPlanModel.gym_id == gym_id
+        ).first()
+
+    def get_all_by_gym(self, gym_id: int, include_inactive: bool = False) -> List[MembershipPlanModel]:
+        query = self.db.query(MembershipPlanModel).filter(MembershipPlanModel.gym_id == gym_id)
+        if not include_inactive:
+            query = query.filter(MembershipPlanModel.is_active == True)
+        return query.order_by(MembershipPlanModel.created_at.desc()).all()
+
+    def update(self, plan_id: int, gym_id: int, plan_data: dict) -> Optional[MembershipPlanModel]:
+        plan = self.get_by_id(plan_id, gym_id)
+        if plan:
+            for key, value in plan_data.items():
+                setattr(plan, key, value)
+            self.db.commit()
+            self.db.refresh(plan)
+        return plan
+
+    def delete(self, plan_id: int, gym_id: int) -> bool:
+        plan = self.get_by_id(plan_id, gym_id)
+        if plan:
+            self.db.delete(plan)
+            self.db.commit()
+            return True
+        return False
+
+    def toggle_status(self, plan_id: int, gym_id: int) -> Optional[MembershipPlanModel]:
+        plan = self.get_by_id(plan_id, gym_id)
+        if plan:
+            plan.is_active = not plan.is_active
+            self.db.commit()
+            self.db.refresh(plan)
+        return plan
