@@ -162,3 +162,8 @@ class SubscriptionRepository:
             self.db.commit()
             self.db.refresh(sub)
         return sub
+
+    def get_all_by_gym(self, gym_id: int) -> List[SubscriptionModel]:
+        return self.db.query(SubscriptionModel).filter(
+            SubscriptionModel.gym_id == gym_id
+        ).order_by(SubscriptionModel.start_date.desc()).all()

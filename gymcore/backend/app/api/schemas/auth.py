@@ -5,6 +5,8 @@ class GymResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
+    phone: Optional[str] = None
+    address: Optional[str] = None
     plan_type: str
     is_active: bool
 
@@ -34,6 +36,17 @@ class GymRegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
 
 class TokenResponse(BaseModel):
     access_token: str
